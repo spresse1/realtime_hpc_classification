@@ -2,3 +2,7 @@ matplotlib
 pyqt5
 pandas
 sklearn
+optuna
+plotly
+kaleido
+pg8000
