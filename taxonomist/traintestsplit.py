@@ -21,37 +21,51 @@ def do_work(labelfile, timeseries_dir, output_dir):
 
     labels = []
     files = []
+    colnames = None
     with open(labelfile) as f:
         reader = csv.DictReader(f)
+        colnames = reader.fieldnames
         for row in reader:
             labels.append(row['app'])
             files.append({
                 "datafiles": literal_eval(row['node_ids']),
                 "label": row["app"],
                 "run_id": row["run_id"],
+                "row": row,
             })
     
     X_train, X_test, y_train, y_test = train_test_split(
         files, labels, stratify=labels, test_size=0.2, random_state=42)
 
     # Now copy files where they belong...
-    for items in X_train:
-        logging.info(f"Info moving {items}")
-        for file in items["datafiles"]:
-            logging.info(f"Moving {file} to training set")
-            copy2(
-                os.path.join(timeseries_dir, file + ".hdf"),
-                os.path.join(traindir, file + ".hdf"),
-            )
-    for items in X_test:
-        logging.info(f"Info moving {items}")
-        for file in items["datafiles"]:
-            logging.info(f"Moving {file} to validation set")
-            copy2(
-                os.path.join(timeseries_dir, file + ".hdf"),
-                os.path.join(validatedir, file + ".hdf"),
-            )
+    with open(os.path.join(traindir, "metadata.csv"), "w") as f:
+        w = csv.DictWriter(f, fieldnames=colnames)
+        w.writeheader()
+        for items in X_train:
+            logging.info(f"Info moving {items}")
+            for file in items["datafiles"]:
+                logging.info(f"Moving {file} to training set")
+                copy2(
+                    os.path.join(timeseries_dir, file + ".hdf"),
+                    os.path.join(traindir, file + ".hdf"),
+                )
+            # Write a CSV entry for new metadata file
+            w.writerow(items["row"])
 
+
+    with open(os.path.join(validatedir, "metadata.csv"), "w") as f:
+        w = csv.DictWriter(f, fieldnames=colnames)
+        w.writeheader()
+        for items in X_test:
+            logging.info(f"Info moving {items}")
+            for file in items["datafiles"]:
+                logging.info(f"Moving {file} to validation set")
+                copy2(
+                    os.path.join(timeseries_dir, file + ".hdf"),
+                    os.path.join(validatedir, file + ".hdf"),
+                )
+            # Write a CSV entry for new metadata file
+            w.writerow(items["row"])
 
 def main():
     parser = argparse.ArgumentParser(description="Perform a train-test split for Taxonomist data along a per-job axis")
