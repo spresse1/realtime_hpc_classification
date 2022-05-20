@@ -22,13 +22,15 @@ def impute_scale_file(filename, input_dir, output_dir, imputer:SimpleImputer, sc
     filepath = os.path.join(input_dir, filename + ".hdf")
     logging.debug(f"Handling file {filepath}")
     data = pandas.read_hdf(filepath)
+    index = data.index
+    cols = data.columns
     data = imputer.transform(data)
     data = scaler.transform(data)
 
     outpath = os.path.join(output_dir, filename + ".hdf")
     logging.info(f"Writing data to {outpath}")
     with pandas.HDFStore(outpath) as writer:
-        writer.put('ts', pandas.DataFrame(data))
+        writer.put('ts', pandas.DataFrame(data, index=index, columns=cols))
 
 def do_work(label_file, timeseries_dir, output_dir):
 
