@@ -141,7 +141,7 @@ def report(outdir, test_name, y_test, y_pred, classifier):
     classes = np.concatenate([classifier.classes_, [ "unknown" ]])
     cm = confusion_matrix(y_test, y_pred, labels=classes)
     print(cm)
-    cr = classification_report(y_test, y_pred, labels=classes, target_names=classes)
+    cr = classification_report(y_test, y_pred,labels=classifier.classes_, target_names=classifier.classes_)
     print(cr)
     with open(os.path.join(outdir, test_name, "results.txt"), "w") as f:
         f.write(" ".join(sys.argv))
