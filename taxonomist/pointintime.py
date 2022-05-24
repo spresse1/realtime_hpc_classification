@@ -57,12 +57,17 @@ TESTS = {
     "svc": {
         TEST_OUTNAME: "svc",
         TEST_CLASSIFIER: SVC,
-        TEST_PARAMS: { },
+        TEST_PARAMS: { 
+            "probability": True
+        },
     },
     "linear_svc": {
         TEST_OUTNAME: "linear_svc",
-        TEST_CLASSIFIER: LinearSVC,
-        TEST_PARAMS: { },
+        TEST_CLASSIFIER: SVC,
+        TEST_PARAMS: { 
+            "kernel": "linear",
+            "probability": True,
+        },
     },
 }
 
