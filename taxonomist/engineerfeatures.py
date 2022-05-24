@@ -43,12 +43,6 @@ def engineer_features(node, input_dir, output_dir, window_length, trim_data):
         index = index[trim_data:-trim_data]
         data = data[trim_data:-trim_data]
     
-    # Set up new column names
-    edata = {}
-    for col in data.columns:
-        for ef in ENGINEERED_FEATURES:
-            edata[ col + "_" + ef[0] ] = []
-    
     feature_frames = []
     if window_length is None:
         window_length = len(data)
@@ -77,6 +71,7 @@ def do_work(input_dir, output_dir, window_length, trim_data):
         reader = csv.DictReader(f)
         colnames = reader.fieldnames
         writer = csv.DictWriter(o, fieldnames=colnames)
+        writer.writeheader()
         for row in reader:
             # Copy to the output CSV
             writer.writerow(row)
