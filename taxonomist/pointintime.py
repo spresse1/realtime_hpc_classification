@@ -91,6 +91,8 @@ def get_data(train_dir, val_dir, train_samples=None, validate_samples=None,
                 logging.debug(f"Reading file {filepath}")
                 data = pandas.read_hdf(filepath)
                 data.insert(0, "label", [ label ] * data.shape[0])
+                if trim_data!=0:
+                    data = data[trim_data:-trim_data]
                 alldata += [ data ]
 
     traindata = pandas.concat(alldata)
