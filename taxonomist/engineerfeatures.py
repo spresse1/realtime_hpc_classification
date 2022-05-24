@@ -53,7 +53,7 @@ def engineer_features(node, input_dir, output_dir, window_length, trim_data):
             ), feature[1])(**feature[2])
         trans.columns = [ x + "_" + feature[0] for x in trans.columns ]
         feature_frames += [ trans ]
-    edata = pandas.concat(feature_frames, axis=1)
+    edata = pandas.concat(feature_frames, axis=1).fillna(0)
 
     with pandas.HDFStore(outpath, "w") as writer:
         writer.put('ts', pandas.DataFrame(edata, index=index))
