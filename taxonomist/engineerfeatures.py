@@ -12,18 +12,19 @@ import scipy
 from sklearn.model_selection import train_test_split
 from shutil import copy2
 
-FEATURE_TUPLES = [
-   ('max', np.max),
-   ('min', np.min),
-   ('mean', np.mean),
-   ('std', np.std),
-   ('skew', scipy.stats.skew),
-   ('kurt', scipy.stats.kurtosis),
-   ('perc05', lambda x: np.percentile(x, 5)),
-   ('perc25', lambda x: np.percentile(x, 25)),
-   ('perc50', lambda x: np.percentile(x, 50)),
-   ('perc75', lambda x: np.percentile(x, 75)),
-   ('perc95', lambda x: np.percentile(x, 95))
+# (Name to use in column labels, name of pandas.DataFrame function to apply, arguments to function)
+ENGINEERED_FEATURES = [
+   ('max', 'max', {}),
+   ('min', 'min', {}),
+   ('mean', 'mean', {}),
+   ('std', 'std', {}),
+   ('skew', 'skew', {}),
+   ('kurt', 'kurt', {}),
+   ('perc05', 'quantile', {'quantile': 0.05}),
+   ('perc25', 'quantile', {'quantile': 0.25}),
+   ('perc50', 'quantile', {'quantile': 0.50}),
+   ('perc75', 'quantile', {'quantile': 0.75}),
+   ('perc95', 'quantile', {'quantile': 0.95})
 ]
 
 def engineer_features(node, input_dir, output_dir, window_length, trim_data):
@@ -45,22 +46,20 @@ def engineer_features(node, input_dir, output_dir, window_length, trim_data):
     # Set up new column names
     edata = {}
     for col in data.columns:
-        for ef in FEATURE_TUPLES:
+        for ef in ENGINEERED_FEATURES:
             edata[ col + "_" + ef[0] ] = []
     
-    for i in range(len(data)):
-        logging.debug(f"Processing row {i}")
-        for name in data.columns:
-            logging.debug(f"Processing column {name}")
-            start = 0
-            if window_length is not None:
-                start = max(0, i - window_length)
-            logging.debug(f"Start indexes are {start}:{i+1} (window size {window_length})")
-            tdata = data[name][start:i+1]
-            for feature in FEATURE_TUPLES:
-                res = feature[1](tdata)
-                logging.debug(f"{name + '_' + feature[0]}: {res}")
-                edata[name + "_" + feature[0]].append(res)
+    feature_frames = []
+    if window_length is None:
+        window_length = len(data)
+    for feature in ENGINEERED_FEATURES:
+        trans = getattr(
+            data.rolling(
+                window_length, closed="both", min_periods=1
+            ), feature[1])(**feature[2])
+        trans.columns = [ x + "_" + feature[0] for x in trans.columns ]
+        feature_frames += [ trans ]
+    edata = pandas.concat(feature_frames, axis=1)
 
     with pandas.HDFStore(outpath, "w") as writer:
         writer.put('ts', pandas.DataFrame(edata, index=index))
