@@ -21,6 +21,8 @@ from sklearn.metrics import classification_report, confusion_matrix, ConfusionMa
 from sklearn.utils import resample
 from sklearn.model_selection import train_test_split
 
+CONFIDENCE_THRESHOLD=0.75
+
 TEST_CLASSIFIER="classifier"
 TEST_PARAMS="params"
 TEST_OUTNAME="name"
@@ -120,7 +122,7 @@ def override_predict(self, X):
     predictions = super(self.__class__, self).predict(X)
     probs = self.predict_proba(X)
     for i in range(len(probs)):
-        if max(probs[i]) < 0.9:
+        if max(probs[i]) < CONFIDENCE_THRESHOLD:
             predictions[i] = "unknown"
     return predictions
 

@@ -20,6 +20,8 @@ from sklearn.svm import SVC, LinearSVC
 from sklearn.metrics import classification_report, confusion_matrix, ConfusionMatrixDisplay
 from sklearn.utils import resample
 
+CONFIDENCE_THRESHOLD=0.75
+
 TEST_CLASSIFIER="classifier"
 TEST_PARAMS="params"
 TEST_OUTNAME="name"
@@ -200,7 +202,7 @@ def do_work(classifier, train_dir, val_dir, out_dir,
     predictions = classify(X_val, classifier)
     probs = classifier.predict_proba(X_val)
     for i in range(len(probs)):
-        if max(probs[i]) < 0.9:
+        if max(probs[i]) < CONFIDENCE_THRESHOLD:
             predictions[i] = "unknown"
 
 
