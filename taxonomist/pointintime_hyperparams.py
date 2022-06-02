@@ -186,7 +186,7 @@ class StudyRunner:
 
         cparams = params
         if self.classifier_args is not None:
-            cparams |= self.classifier_args
+            cparams = { **cparams, **self.classifier_args }
 
         # Make a dynamic class with the classier as superclass
         DuckClassifier = type('DuckClassifier', (self.classifier,), {})
@@ -264,9 +264,9 @@ def do_work(study_name, classifier, sampler, input_dir, out_dir, db_string=None,
 
     # Grid search needs to know the range of the grid
     if sampler == "grid":
-        params |= {"search_space": classifier_data[TEST_HYPERPARAMS_RANGES]}
+        params = { **params, **{"search_space": classifier_data[TEST_HYPERPARAMS_RANGES]} }
     elif sampler == "nsgaii":
-        params |= {"population_size": 25}
+        params = { **params, **{"population_size": 25} }
 
     logging.info(f"Creating study, sampler args: {params}")
     study = optuna.create_study(
