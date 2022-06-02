@@ -159,10 +159,15 @@ def report(outdir, test_name, y_test, y_pred, classifier):
 
 
     fig = plt.figure(figsize=(8,8), dpi=100)
-    disp = ConfusionMatrixDisplay.from_predictions(y_test, y_pred, 
-        labels=classes, include_values=True, 
-        xticks_rotation="vertical", values_format='0.3f', normalize='all',
-        ax=fig.add_axes([0.15,0.05,0.85,0.9],autoscale_on=True))
+    NORMALIZE='all'
+    if hasattr(ConfusionMatrixDisplay, "from_predictions"):
+        disp = ConfusionMatrixDisplay.from_predictions(y_test, y_pred, 
+            labels=classes, include_values=True, 
+            xticks_rotation="vertical", values_format='0.3f', normalize=NORMALIZE,
+            ax=fig.add_axes([0.15,0.05,0.85,0.9],autoscale_on=True))
+    else:
+        cm = confusion_matrix(y_test, y_pred, labels=classes, normalize=NORMALIZE)
+        disp = ConfusionMatrixDisplay(cm, display_labels=classes)
     
     plt.savefig(os.path.join(outdir, test_name, "confusion_matrix.png"))
 
