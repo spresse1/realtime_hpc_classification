@@ -27,7 +27,7 @@ ENGINEERED_FEATURES = [
    ('perc95', 'quantile', {'quantile': 0.95})
 ]
 
-def engineer_features(node, input_dir, output_dir, window_length, trim_data):
+def engineer_features(node, input_dir, output_dir, window_length, trim_data, only_last=False):
     inpath = os.path.join(input_dir, node + ".hdf")
     outpath = os.path.join(output_dir, node + ".hdf")
     logging.debug(f"Handling file {inpath}")
@@ -55,10 +55,13 @@ def engineer_features(node, input_dir, output_dir, window_length, trim_data):
         feature_frames += [ trans ]
     edata = pandas.concat(feature_frames, axis=1).fillna(0)
 
+    if only_last:
+        edata = edata.iloc[-1:]
+    
     with pandas.HDFStore(outpath, "w") as writer:
         writer.put('ts', pandas.DataFrame(edata, index=index))
 
-def do_work(input_dir, output_dir, window_length, trim_data):
+def do_work(input_dir, output_dir, window_length, trim_data, only_last):
     if not os.path.exists(output_dir):
         logging.info(f"Making output directory {output_dir}")
         os.mkdir(output_dir)
@@ -77,7 +80,7 @@ def do_work(input_dir, output_dir, window_length, trim_data):
             writer.writerow(row)
             # process file...
             for node in literal_eval(row['node_ids']):
-                engineer_features(node, input_dir, output_dir, window_length, trim_data)
+                engineer_features(node, input_dir, output_dir, window_length, trim_data, only_last=only_last)
 
 def main():
     parser = argparse.ArgumentParser(description="Perform a train-test split for Taxonomist data along a per-job axis")
@@ -87,6 +90,8 @@ def main():
         help="When calculating statistics, use at most N samples")
     parser.add_argument("--trim-data", type=int, default=None,
         help="Trim this many samples from the beginning and end of each series. Default 0")
+    parser.add_argument("--only-last", action='store_true',
+        help="Store only the last data point in each file (equal to taxonomist features.hdf)")
     parser.add_argument("--loglevel", choices=["CRITICAL", "ERROR", "WARNING", "INFO", "DEBUG"])
 
     args = parser.parse_args()
@@ -95,7 +100,7 @@ def main():
         logging.basicConfig(level=args.loglevel)
     logging.debug(args)
 
-    do_work(args.input_dir, args.output_dir, args.window_length, args.trim_data)
+    do_work(args.input_dir, args.output_dir, args.window_length, args.trim_data, args.only_last)
 
 
 if __name__=="__main__":
