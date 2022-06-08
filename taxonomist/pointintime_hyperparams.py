@@ -35,7 +35,7 @@ TEST_HYPERPARAMS_RANGES="hyperparam_ranges"
 
 def hps_rbf_svc(trial):
     ret = {
-        "C": trial.suggest_float("C", 0.00001, 10.0),
+        "C": trial.suggest_float("C", 0.000001, 10.0e6),
         "tol": trial.suggest_float("tol", 1e-6, 1e-1, log=True),
         "gamma": trial.suggest_categorical("gamma", ["scale", "auto"])
     }
@@ -43,7 +43,7 @@ def hps_rbf_svc(trial):
 
 def hps_linear_svc(trial):
     ret = {
-        "C": trial.suggest_float("C", 0.00001, 10.0),
+        "C": trial.suggest_float("C", 0.000001, 10.0e6),
         "tol": trial.suggest_float("tol", 1e-6, 1e-1, log=True)
     }
     return ret
@@ -69,7 +69,12 @@ TESTS = {
     "extra_trees": {
         TEST_OUTNAME: "extra_forest",
         TEST_CLASSIFIER: ExtraTreesClassifier,
-        TEST_PARAMS: {}
+        TEST_PARAMS: {},
+        TEST_HYPERPARAMS_FUNCTION: hps_random_forest,
+        TEST_HYPERPARAMS_RANGES: {
+            "n_estimators": range(50, 500, 5),
+            "criterion": ["gini", "entropy", "log_loss"]
+        }
     },
     "svc": {
         TEST_OUTNAME: "svc",
@@ -80,8 +85,8 @@ TESTS = {
         },
         TEST_HYPERPARAMS_FUNCTION: hps_rbf_svc,
         TEST_HYPERPARAMS_RANGES: {
-            "C": np.logspace(0.00001, 10.0),
-            "tol": np.logspace(1e-6, 1e-1),
+            "C": np.logspace(-6, 6, 100),
+            "tol": np.logspace(-6, -1),
             "gamma": ["scale", "auto"],
         },
     },
@@ -94,8 +99,8 @@ TESTS = {
         },
         TEST_HYPERPARAMS_FUNCTION: hps_linear_svc,
         TEST_HYPERPARAMS_RANGES: {
-            "C": np.logspace(0.00001, 10.0),
-            "tol": np.logspace(1e-6, 1e-1),
+            "C": np.logspace(-6, 6, 100),
+            "tol": np.logspace(-6, -1),
         },
     },
 }
@@ -267,8 +272,8 @@ def do_work(study_name, classifier, sampler, input_dir, out_dir, db_string=None,
     # Grid search needs to know the range of the grid
     if sampler == "grid":
         params = { **params, **{"search_space": classifier_data[TEST_HYPERPARAMS_RANGES]} }
-    elif sampler == "nsgaii":
-        params = { **params, **{"population_size": 25} }
+    # elif sampler == "nsgaii":
+    #     params = { **params, **{"population_size": 25} }
 
     logging.info(f"Creating study, sampler args: {params}")
     study = optuna.create_study(
