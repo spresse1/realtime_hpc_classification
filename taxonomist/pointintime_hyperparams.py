@@ -35,9 +35,9 @@ TEST_HYPERPARAMS_RANGES="hyperparam_ranges"
 
 def hps_rbf_svc(trial):
     ret = {
-        "C": trial.suggest_float("C", 0.000001, 10.0e6),
-        "tol": trial.suggest_float("tol", 1e-6, 1e-1, log=True),
-        "gamma": trial.suggest_categorical("gamma", ["scale", "auto"])
+        "C": trial.suggest_float("C", 10e4, 10.0e5),
+        "tol": trial.suggest_float("tol", 1e-6, 1e-2, log=True),
+        #"gamma": "scale", #trial.suggest_categorical("gamma", ["scale", "auto"])
     }
     return ret
 
@@ -81,13 +81,14 @@ TESTS = {
         TEST_CLASSIFIER: SVC,
         TEST_PARAMS: { 
             "kernel": "rbf",
-            "probability": True
+            "probability": True,
+            "gamma": "scale",
         },
         TEST_HYPERPARAMS_FUNCTION: hps_rbf_svc,
         TEST_HYPERPARAMS_RANGES: {
-            "C": np.logspace(-6, 6, 100),
-            "tol": np.logspace(-6, -1),
-            "gamma": ["scale", "auto"],
+            "C": np.arange(start=10e4, stop=10e5, step=(10e5-10e4)/50),
+            "tol": np.logspace(-6, -2),
+            #"gamma": ["scale", "auto"],
         },
     },
     "linear_svc": {

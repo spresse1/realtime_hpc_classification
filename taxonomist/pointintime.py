@@ -49,18 +49,24 @@ TESTS = {
     "random_forest": {
         TEST_OUTNAME: "random_forest",
         TEST_CLASSIFIER: RandomForestClassifier,
-        TEST_PARAMS: {}
+        TEST_PARAMS: {
+            "n_estimators": 200
+        }
     },
     "extra_trees": {
-        TEST_OUTNAME: "extra_forest",
+        TEST_OUTNAME: "extra_trees",
         TEST_CLASSIFIER: ExtraTreesClassifier,
-        TEST_PARAMS: {}
+        TEST_PARAMS: {
+            "n_estimators": 200
+        }
     },
     "svc": {
         TEST_OUTNAME: "svc",
         TEST_CLASSIFIER: SVC,
         TEST_PARAMS: { 
-            "probability": True
+            "probability": True,
+            "C": 300000,
+            "tol": 0.003,
         },
     },
     "linear_svc": {
@@ -69,6 +75,8 @@ TESTS = {
         TEST_PARAMS: { 
             "kernel": "linear",
             "probability": True,
+            "C": 100,
+            "tol": 0.001
         },
     },
 }
@@ -131,6 +139,7 @@ def get_data(train_dir, val_dir, train_samples=None, validate_samples=None,
         valdata = resample(valdata, stratify=valdata.iloc[:, 0].values,
             n_samples=validate_samples, random_state=42)
 
+    logging.info(f"Training data: {len(traindata)}, Validation: {len(valdata)}")
     return traindata.iloc[:,1:], valdata.iloc[:,1:], traindata.iloc[:,0], valdata.iloc[:,0]
 
 def train(classifier, params, X, y,):
@@ -150,7 +159,7 @@ def report(outdir, test_name, y_test, y_pred, classifier):
     classes = np.concatenate([classifier.classes_, [ "unknown" ]])
     cm = confusion_matrix(y_test, y_pred, labels=classes)
     print(cm)
-    cr = classification_report(y_test, y_pred,labels=classifier.classes_, target_names=classifier.classes_)
+    cr = classification_report(y_test, y_pred,labels=classifier.classes_, target_names=classifier.classes_, digits=3)
     print(cr)
     with open(os.path.join(outdir, test_name, "results.txt"), "w") as f:
         f.write(" ".join(sys.argv))
