@@ -56,7 +56,8 @@ def engineer_features(node, input_dir, output_dir, window_length, trim_data, onl
     edata = pandas.concat(feature_frames, axis=1).fillna(0)
 
     if only_last:
-        edata = edata.iloc[-1:]
+        edata = pandas.DataFrame(edata.iloc[-1:])
+        index = [ index[-1] ]
     
     with pandas.HDFStore(outpath, "w") as writer:
         writer.put('ts', pandas.DataFrame(edata, index=index))
