@@ -4,6 +4,7 @@ from ast import literal_eval
 import csv
 import os
 import sys
+import time
 import numpy as np
 import matplotlib.pyplot as plt
 import pandas
@@ -26,21 +27,21 @@ TEST_CLASSIFIER="classifier"
 TEST_PARAMS="params"
 TEST_OUTNAME="name"
 TESTS = {
-    # "knn": {
-    #     TEST_OUTNAME: "knn",
-    #     TEST_CLASSIFIER: KNeighborsClassifier,
-    #     TEST_PARAMS: {"n_neighbors": 5},
-    # },
+    "knn": {
+        TEST_OUTNAME: "knn",
+        TEST_CLASSIFIER: KNeighborsClassifier,
+        TEST_PARAMS: {"n_neighbors": 5},
+    },
     # "neural": {
     #     TEST_OUTNAME: "neural",
     #     TEST_CLASSIFIER: MLPClassifier,
     #     TEST_PARAMS: { "hidden_layer_sizes": (192, 192, 192, )}
     # },
-    # "decision_tree": {
-    #     TEST_OUTNAME: "decision_tree",
-    #     TEST_CLASSIFIER: DecisionTreeClassifier,
-    #     TEST_PARAMS: {}
-    # },
+    "decision_tree": {
+        TEST_OUTNAME: "decision_tree",
+        TEST_CLASSIFIER: DecisionTreeClassifier,
+        TEST_PARAMS: {}
+    },
     # "bagging-tree": {
     #     TEST_OUTNAME: "bagging-tree",
     #     TEST_CLASSIFIER: BaggingClassifier,
@@ -150,19 +151,23 @@ def train(classifier, params, X, y,):
 def classify(X_test, classifier):
     return classifier.predict(X_test)
 
-def report(outdir, test_name, y_test, y_pred, classifier):
+def report(outdir, test_name, y_test, y_pred, classifier, runtime):
     if not os.path.exists(outdir):
         os.mkdir(outdir)
     if not os.path.exists(os.path.join(outdir, test_name)):
         os.mkdir(os.path.join(outdir, test_name))
     
     classes = np.concatenate([classifier.classes_, [ "unknown" ]])
+    runmsg = f"Runtime was {runtime} for {len(y_pred)} samples, or {runtime/len(y_pred)}s per sample"
+    print(runmsg)
     cm = confusion_matrix(y_test, y_pred, labels=classes)
     print(cm)
     cr = classification_report(y_test, y_pred,labels=classifier.classes_, target_names=classifier.classes_, digits=3)
     print(cr)
     with open(os.path.join(outdir, test_name, "results.txt"), "w") as f:
         f.write(" ".join(sys.argv))
+        f.write("\n")
+        f.write(runmsg)
         f.write("\n")
         f.write(str(cm))
         f.write("\n")
@@ -207,16 +212,19 @@ def do_work(classifier, train_dir, val_dir, out_dir,
     )
 
     logging.info("Making predictions")
-    # Todo: use confidence intervals instead and reject unconfident decisions
+
+    start = time.time()
     predictions = classify(X_val, classifier)
     probs = classifier.predict_proba(X_val)
     for i in range(len(probs)):
         if max(probs[i]) < CONFIDENCE_THRESHOLD:
             predictions[i] = "unknown"
+    end = time.time()
 
+    runtime = end-start
 
     logging.info("Generating report")
-    report(out_dir, test[TEST_OUTNAME], y_val, predictions, classifier)
+    report(out_dir, test[TEST_OUTNAME], y_val, predictions, classifier, runtime)
 
     logging.info("Done.")
 
