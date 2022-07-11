@@ -14,7 +14,9 @@ import argparse
 import logging
 import sklearn
 from sklearn.ensemble import ExtraTreesClassifier, RandomForestClassifier
+from sklearn.feature_selection import f_classif
 from sklearn.model_selection import cross_val_predict, cross_val_score
+from sklearn.neighbors import KNeighborsClassifier
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.svm import SVC, LinearSVC
 from sklearn.metrics import classification_report, confusion_matrix, ConfusionMatrixDisplay
@@ -55,7 +57,31 @@ def hps_random_forest(trial:optuna.trial):
     }
     return ret
 
+def hps_decision_tree(trial:optuna.trial):
+    return {
+        "criterion": trial.suggest_categorical("categorical", ["gini", "entropy", "log_loss"]),
+        "splitter": trial.suggest_categorical("splitter", [ "best", "random" ]),
+        "max_features": trial.suggest_categorical("max_features", ["auto", "sqrt", "log2"]),
+    }
+
+def hps_knn(trial:optuna.trial):
+    return {
+        "n_neighbors": trial.suggest_int("n_neighbors", 1, 11, 2),
+        "columns": trial.suggest_int("columns", 5, 15)
+    }
+
 TESTS = {
+    "decision_tree": {
+        TEST_OUTNAME: "decision_tree",
+        TEST_CLASSIFIER: DecisionTreeClassifier,
+        TEST_PARAMS: {},
+        TEST_HYPERPARAMS_FUNCTION: hps_decision_tree,
+        TEST_HYPERPARAMS_RANGES: {
+            "criterion": ["gini", "entropy", "log_loss"],
+            "splitter": [ "best", "random" ],
+            "max_features": ["auto", "sqrt", "log2"],
+        }
+    },
     "random_forest": {
         TEST_OUTNAME: "random_forest",
         TEST_CLASSIFIER: RandomForestClassifier,
@@ -104,6 +130,16 @@ TESTS = {
             "tol": np.logspace(-6, -1),
         },
     },
+    "knn": {
+        TEST_OUTNAME: "knn",
+        TEST_CLASSIFIER: KNeighborsClassifier,
+        TEST_PARAMS: {},
+        TEST_HYPERPARAMS_FUNCTION: hps_knn,
+        TEST_HYPERPARAMS_RANGES: {
+            "n_neighbors": range(1, 11, 2),
+            "columns": range(5, 15),
+        }
+    }
 }
 
 SAMPLERS = {
@@ -193,6 +229,14 @@ class StudyRunner:
             params = self.hpfunc(trial)
 
         cparams = params
+        
+        # Remove the column number argument if using a KNN
+        logging.info(f"Classifier is {self.classifier}")
+        if isinstance(self.classifier, KNeighborsClassifier) or self.classifier==KNeighborsClassifier:
+            logging.info("Removing columns for KNN")
+            colcount = cparams["columns"]
+            del cparams["columns"]
+
         if self.classifier_args is not None:
             cparams = { **cparams, **self.classifier_args }
 
@@ -201,6 +245,8 @@ class StudyRunner:
         # Override the score function to use ours that 
         DuckClassifier.score = override_score
         DuckClassifier.predict = override_predict
+        if isinstance(self.classifier, KNeighborsClassifier) or self.classifier==KNeighborsClassifier:
+            DuckClassifier.colcount = colcount
 
         return DuckClassifier(**cparams)
 
@@ -215,9 +261,16 @@ class StudyRunner:
         # classifier.score = override_score
 
         logging.debug("Running cross-validation")
-        return cross_val_score(classifier, self.X, self.y, cv=5).mean()
 
-def report(outdir, test_name, studyrunner, trial):
+        X = self.X
+        if isinstance(classifier, KNeighborsClassifier) or self.classifier == KNeighborsClassifier:
+            cols = most_important_columns(X, self.y)[:classifier.colcount]
+            logging.info(f"Including {classifier.colcount} columns: {cols}")
+            X = self.X[cols]
+        return cross_val_score(classifier, X, self.y, cv=5).mean()
+
+def report(outdir, test_name, studyrunner, study):
+    trial = study.best_trial
     classifier = studyrunner.get_classifier(trial)
     # X_train, X_test, y_train, y_test = train_test_split(studyrunner.X, studyrunner.y)
     # classifier.fit(X_train, y_train)
@@ -231,6 +284,7 @@ def report(outdir, test_name, studyrunner, trial):
     
     classes = np.unique(studyrunner.y)
     unkclasses = np.concatenate([classes, [ "unknown" ]])
+    print(f"Best trial was {study.best_trial.number} with value {study.best_value} and params {study.best_params}: {study.best_trial}")
     cm = confusion_matrix(studyrunner.y, y_pred, labels=unkclasses)
     print(cm)
     cr = classification_report(studyrunner.y, y_pred, labels=classes, target_names=classes)
@@ -238,6 +292,7 @@ def report(outdir, test_name, studyrunner, trial):
     with open(os.path.join(outdir, test_name, "results.txt"), "w") as f:
         f.write(" ".join(sys.argv))
         f.write("\n")
+        f.write(f"Best trial was {study.best_trial.number} with value {study.best_value} and params {study.best_params}: {study.best_trial}\n")
         f.write(str(cm))
         f.write("\n")
         f.write(cr)
@@ -263,6 +318,17 @@ def report(outdir, test_name, studyrunner, trial):
         plt.savefig(os.path.join(outdir, test_name, "decision_tree.png"))
         sklearn.tree.export_graphviz(classifier, os.path.join(outdir, test_name, "tree.dot"))
     #plt.show()
+
+def most_important_columns(X, y):
+    c2, p = f_classif(X, y)
+
+    # make a list of tuples of key and p value
+    pzipped = zip(X.columns, c2, p)
+
+    # Now sort by p value
+    psorted = sorted(pzipped, key=lambda x: x[1], reverse=True)
+    
+    return [ x[0] for x in psorted ]
 
 def do_work(study_name, classifier, sampler, input_dir, out_dir, db_string=None, timeout=None, trials=None,
     samples=None, trim_data=0):
@@ -321,7 +387,7 @@ def do_work(study_name, classifier, sampler, input_dir, out_dir, db_string=None,
 
         logging.info("Rerunning best trial and writing graphics")
 
-        report(out_dir, study_name, obj, study.best_trial)
+        report(out_dir, study_name, obj, study)
     logging.info("All done!")
 
 if __name__=="__main__":
