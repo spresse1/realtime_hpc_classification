@@ -1,8 +1,10 @@
 matplotlib
 pyqt5
 pandas
-sklearn
+scikit-learn
 optuna
 plotly
 kaleido
 pg8000
+tslearn
+sktime
